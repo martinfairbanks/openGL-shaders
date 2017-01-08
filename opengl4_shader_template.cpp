@@ -19,14 +19,23 @@
 	bool running = true;
 	bool fullscreen = false;
 
+
 	/* the vertex shader positions each vertex point */
-	const char *vertexShaderSource =	"#version 430 core														\n"
+	const char* vertexShaderSource =	"#version 430 core														\n"
 										"																		\n"
 										"void main(void)														\n"
 										"{																		\n"
-										"    gl_Position = vec4(0.0f, 0.0f, 0.5f, 1.0);							\n"
+										"	//vertice positions for 2 triangles									\n"
+										"	const vec4 vertices[6] =	vec4[6](vec4(1.0, -1.0, 1.0, 1.0),		"
+										"										vec4(-1.0, 1.0, 1.0, 1.0),		"
+										"										vec4(1.0, 1.0, 1.0, 1.0),		"
+										"										vec4(-1.0, 1.0, 1.0, 1.0),		"
+										"										vec4(-1.0, -1.0, 1.0, 1.0),		"
+										"										vec4(1.0, -1.0, 1.0, 1.0));		\n"
+										"																		\n"
+										"	//index into array using gl_VertexID								\n"
+										"	gl_Position = vertices[gl_VertexID];								\n"
 										"}																		\n";
-
 
 	/* the fragment shader colours each fragment (pixel-sized area of the triangle) */
 	const char *fragmentShaderSource =	"#version 430 core														\n"
@@ -35,14 +44,34 @@
 										"																		\n"
 										"void main(void)														\n"
 										"{																		\n"
-										"    color = vec4(0.0, 0.8, 1.0, 1.0);									\n"
+										"    color = vec4(1.0, 0.0, 1.0, 1.0);									\n"
 										"}																		\n";
+
+	char *readFile(const char *filename)
+	{
+		FILE* fp = fopen(filename, "r");
+		//get file length
+		fseek(fp, 0, SEEK_END);
+		long fileLength = ftell(fp);
+		fseek(fp, 0, SEEK_SET);
+		char* contents = (char*)malloc(fileLength + 1);
+
+		//clear memory
+		for (int i = 0; i < fileLength + 1; i++) {
+			contents[i] = 0;
+		}
+
+		fread(contents, 1, fileLength, fp);
+		contents[fileLength + 1] = '\0';
+		fclose(fp);
+		return contents;
+	}
 
 int main(int argc, char **argv)
 {
 	performanceFrequency = SDL_GetPerformanceFrequency();
 	SDL_Init(SDL_INIT_VIDEO);
-
+	
 	window = SDL_CreateWindow("openGL", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 
 				screenWidth, screenHeight, SDL_WINDOW_OPENGL/* | SDL_WINDOW_FULLSCREEN_DESKTOP*/);
 
@@ -67,6 +96,10 @@ int main(int argc, char **argv)
 	//define the viewport dimensions
 	glViewport(0, 0, screenWidth, screenHeight);
 
+	/* build and compile shader program */
+	//const char *vertexShaderSource = readFile("data/shaders2/vertexshader.vert");
+	//const char *fragmentShaderSource = readFile("data/shaders2/fragmentshader.frag");
+
 	//vertex shader
 	GLint vertexShader = glCreateShader(GL_VERTEX_SHADER);
 	glShaderSource(vertexShader, 1, &vertexShaderSource, NULL);
@@ -80,6 +113,7 @@ int main(int argc, char **argv)
 	{
 		glGetShaderInfoLog(vertexShader, 512, NULL, infoLog);
 		printf("Vertex shader error:\n%s\n", infoLog);
+		
 	}
 
 	//fragment shader
@@ -159,17 +193,13 @@ int main(int argc, char **argv)
 		}
 		
 		/* render */
-		const GLfloat color[] = {	(float)sin(currentTick / 100) * 0.2f + 0.5f, 0.0f,
-									(float)cos(currentTick / 100) * 0.2f + 0.5f, 1.0f };
-
-		glClearBufferfv(GL_COLOR, 0, color);
+		glClearColor(0.2f, 0.4f, 0.8f, 1.0f);
+		glClear(GL_COLOR_BUFFER_BIT);
 
 		//set shader program
 		glUseProgram(shaderProgram);
 
-		//draw point
-		glPointSize(200.0f);
-		glDrawArrays(GL_POINTS, 0, 1);
+		glDrawArrays(GL_TRIANGLES, 0, 6);
 
 		/* update screen */
 		SDL_GL_SwapWindow(window);

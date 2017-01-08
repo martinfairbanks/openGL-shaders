@@ -19,7 +19,6 @@
 	bool running = true;
 	bool fullscreen = false;
 
-#if 0
 	/* the vertex shader positions each vertex point */
 	const char *vertexShaderSource =	"#version 430 core														\n"
 										"																		\n"
@@ -36,35 +35,14 @@
 										"																		\n"
 										"void main(void)														\n"
 										"{																		\n"
-										"    color = vec4(0.0, 0.8, 1.0, 1.0);									\n"
+										"    color = vec4(0.0, 1.0, 0.0, 1.0);									\n"
 										"}																		\n";
-#endif
-
-	char *readFile(const char *filename)
-	{
-		FILE* fp = fopen(filename, "r");
-		//get file length
-		fseek(fp, 0, SEEK_END);
-		long fileLength = ftell(fp);
-		fseek(fp, 0, SEEK_SET);
-		char* contents = (char*)malloc(fileLength + 1);
-
-		//clear memory
-		for (int i = 0; i < fileLength + 1; i++) {
-			contents[i] = 0;
-		}
-
-		fread(contents, 1, fileLength, fp);
-		contents[fileLength + 1] = '\0';
-		fclose(fp);
-		return contents;
-	}
 
 int main(int argc, char **argv)
 {
 	performanceFrequency = SDL_GetPerformanceFrequency();
 	SDL_Init(SDL_INIT_VIDEO);
-	
+
 	window = SDL_CreateWindow("openGL", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 
 				screenWidth, screenHeight, SDL_WINDOW_OPENGL/* | SDL_WINDOW_FULLSCREEN_DESKTOP*/);
 
@@ -90,8 +68,8 @@ int main(int argc, char **argv)
 	glViewport(0, 0, screenWidth, screenHeight);
 
 	/* build and compile shader program */
-	const char *vertexShaderSource = readFile("data/shaders2/vertexshader.vert");
-	const char *fragmentShaderSource = readFile("data/shaders2/fragmentshader.frag");
+	//const char *vertexShaderSource = readFile("data/shaders2/vertexshader.vert");
+	//const char *fragmentShaderSource = readFile("data/shaders2/fragmentshader.frag");
 
 	//vertex shader
 	GLint vertexShader = glCreateShader(GL_VERTEX_SHADER);
@@ -105,8 +83,7 @@ int main(int argc, char **argv)
 	if (!success)
 	{
 		glGetShaderInfoLog(vertexShader, 512, NULL, infoLog);
-		//printf("Vertex shader error:\n%s\n", infoLog);
-		
+		printf("Vertex shader error:\n%s\n", infoLog);
 	}
 
 	//fragment shader
@@ -212,6 +189,8 @@ int main(int argc, char **argv)
 		sprintf_s(message, "%.03fms, %.03fFPS\0", msPerFrame, fps);
 		SDL_SetWindowTitle(window, message);
 	}
+
+	glDeleteProgram(shaderProgram);
 	SDL_GL_DeleteContext(glContext);
 	SDL_DestroyWindow(window);
 	SDL_Quit();

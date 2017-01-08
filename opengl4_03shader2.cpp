@@ -19,15 +19,15 @@
 	bool running = true;
 	bool fullscreen = false;
 
+
 	/* the vertex shader positions each vertex point */
 	const char *vertexShaderSource =	"#version 430 core														\n"
-										"																		\n"
+										"layout(location = 0) in vec4 in_position;								\n"
 										"void main(void)														\n"
 										"{																		\n"
-										"    gl_Position = vec4(0.0f, 0.0f, 0.5f, 1.0);							\n"
+										"    gl_Position = in_position;											\n"
 										"}																		\n";
-
-
+	
 	/* the fragment shader colours each fragment (pixel-sized area of the triangle) */
 	const char *fragmentShaderSource =	"#version 430 core														\n"
 										"																		\n"
@@ -35,14 +35,35 @@
 										"																		\n"
 										"void main(void)														\n"
 										"{																		\n"
-										"    color = vec4(0.0, 0.8, 1.0, 1.0);									\n"
+										"    color = vec4(0.0, 0.0, 1.0, 1.0);									\n"
 										"}																		\n";
+
+
+	char *readFile(const char *filename)
+	{
+		FILE* fp = fopen(filename, "r");
+		//get file length
+		fseek(fp, 0, SEEK_END);
+		long fileLength = ftell(fp);
+		fseek(fp, 0, SEEK_SET);
+		char* contents = (char*)malloc(fileLength + 1);
+
+		//clear memory
+		for (int i = 0; i < fileLength + 1; i++) {
+			contents[i] = 0;
+		}
+
+		fread(contents, 1, fileLength, fp);
+		contents[fileLength + 1] = '\0';
+		fclose(fp);
+		return contents;
+	}
 
 int main(int argc, char **argv)
 {
 	performanceFrequency = SDL_GetPerformanceFrequency();
 	SDL_Init(SDL_INIT_VIDEO);
-
+	
 	window = SDL_CreateWindow("openGL", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 
 				screenWidth, screenHeight, SDL_WINDOW_OPENGL/* | SDL_WINDOW_FULLSCREEN_DESKTOP*/);
 
@@ -67,6 +88,10 @@ int main(int argc, char **argv)
 	//define the viewport dimensions
 	glViewport(0, 0, screenWidth, screenHeight);
 
+	/* build and compile shader program */
+	//const char *vertexShaderSource = readFile("data/shaders/vertexshader.vert");
+	//const char *fragmentShaderSource = readFile("data/shaders/fragmentshader.frag");
+
 	//vertex shader
 	GLint vertexShader = glCreateShader(GL_VERTEX_SHADER);
 	glShaderSource(vertexShader, 1, &vertexShaderSource, NULL);
@@ -79,7 +104,8 @@ int main(int argc, char **argv)
 	if (!success)
 	{
 		glGetShaderInfoLog(vertexShader, 512, NULL, infoLog);
-		printf("Vertex shader error:\n%s\n", infoLog);
+		//printf("Vertex shader error:\n%s\n", infoLog);
+		
 	}
 
 	//fragment shader
@@ -110,6 +136,26 @@ int main(int argc, char **argv)
 
 	glDeleteShader(vertexShader);
 	glDeleteShader(fragmentShader);
+
+	GLfloat vertices[] =
+	{
+		0.0f, 1.0f,
+		-1.0f, -1.0f,
+		1.0f, -1.0f
+	};
+
+	GLuint vertexBufferObject;
+	//generate 1 vertex buffer
+	glGenBuffers(1, &vertexBufferObject);
+	//bind the buffer to the GL_ARRAY_BUFFER binding point 
+	glBindBuffer(GL_ARRAY_BUFFER, vertexBufferObject);
+	//upload the buffer data to the GPU - send the data to the buffer that is bound to the GL_ARRAY_BUFFER binding point
+	glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+	//enable the data that was copied to the buffer to go to through the graphics processing pipeline 
+	//enable the position attribute
+	glEnableVertexAttribArray(0);
+	//tells opengl how our data buffer is structured -  - point it to the start of the buffer
+	glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 0, 0);
 
 	unsigned long long lastCounter = SDL_GetPerformanceCounter();
 	unsigned int currentTick = SDL_GetTicks();
@@ -159,17 +205,15 @@ int main(int argc, char **argv)
 		}
 		
 		/* render */
-		const GLfloat color[] = {	(float)sin(currentTick / 100) * 0.2f + 0.5f, 0.0f,
-									(float)cos(currentTick / 100) * 0.2f + 0.5f, 1.0f };
+		glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
+		glClear(GL_COLOR_BUFFER_BIT);
 
-		glClearBufferfv(GL_COLOR, 0, color);
-
-		//set shader program
+		//use shader program for rendering
 		glUseProgram(shaderProgram);
 
-		//draw point
-		glPointSize(200.0f);
-		glDrawArrays(GL_POINTS, 0, 1);
+		glBindVertexArray(vertexBufferObject);
+		glDrawArrays(GL_TRIANGLES, 0, 3);
+		glBindVertexArray(0);
 
 		/* update screen */
 		SDL_GL_SwapWindow(window);
@@ -185,7 +229,7 @@ int main(int argc, char **argv)
 		sprintf_s(message, "%.03fms, %.03fFPS\0", msPerFrame, fps);
 		SDL_SetWindowTitle(window, message);
 	}
-
+	
 	glDeleteProgram(shaderProgram);
 	SDL_GL_DeleteContext(glContext);
 	SDL_DestroyWindow(window);

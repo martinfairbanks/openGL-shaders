@@ -1,7 +1,8 @@
  #version 430 core
 
+layout(location = 0) in vec4 in_position;	
 void main(void)
 {
-	//position vertex in the middle 
-   gl_Position = vec4(0.0f, 0.0f, 0.5f, 1.0);	
+	//gl_Position represents the output position of the vertex
+	gl_Position = in_position;		
 } 
