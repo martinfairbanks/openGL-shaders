@@ -108,7 +108,8 @@ int main(int argc, char** argv)
 	glDeleteShader(vertexShader);
 	glDeleteShader(fragmentShader);
 
-	unsigned long long  lastCounter = SDL_GetPerformanceCounter();
+	unsigned long long lastCounter = SDL_GetPerformanceCounter();
+	unsigned int currentTick = SDL_GetTicks();
 
 	while (running)
 	{
@@ -153,12 +154,21 @@ int main(int argc, char** argv)
 				}	break;
 			}
 		}
+		
+		/* render */
+		const GLfloat color[] = {	(float)sin(currentTick / 100) * 0.2f + 0.5f, 0.0f,
+									(float)cos(currentTick / 100) * 0.2f + 0.5f, 1.0f };
 
-		//render
-		static const GLfloat red[] = { 1.0f, 0.0f, 0.0f, 1.0f };
-		glClearBufferfv(GL_COLOR, 0, red);
+		glClearBufferfv(GL_COLOR, 0, color);
 
-		//update screen
+		//set shader program
+		glUseProgram(shaderProgram);
+
+		//draw point
+		glPointSize(200.0f);
+		glDrawArrays(GL_POINTS, 0, 1);
+
+		/* update screen */
 		SDL_GL_SwapWindow(window);
 
 		unsigned long long endCounter = SDL_GetPerformanceCounter();
@@ -166,6 +176,7 @@ int main(int argc, char** argv)
 		double msPerFrame = (((1000.0f * (double)counterElapsed) / (double)performanceFrequency));
 		double fps = (double)performanceFrequency / (double)counterElapsed;
 		lastCounter = endCounter;
+		currentTick = SDL_GetTicks();
 
 		char message[256];
 		sprintf_s(message, "%.03fms, %.03fFPS\0", msPerFrame, fps);
