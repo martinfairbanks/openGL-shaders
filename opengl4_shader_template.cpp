@@ -13,30 +13,21 @@
 	/* Globals */
 	SDL_Window *window = 0;
 	SDL_Event event; 
-	const int screenWidth = 960;
-	const int screenHeight = 540;
+	const int screenWidth = 1920;
+	const int screenHeight = 1080;
 	unsigned long long performanceFrequency;		//the frequency of the performance counter in counts per seonds
 	bool running = true;
 	bool fullscreen = false;
 
 
 	/* the vertex shader positions each vertex point */
-	const char* vertexShaderSource =	"#version 430 core														\n"
-										"																		\n"
+	const char *vertexShaderSource =	"#version 430 core														\n"
+										"layout(location = 0) in vec4 in_position;								\n"
 										"void main(void)														\n"
 										"{																		\n"
-										"	//vertice positions for 2 triangles									\n"
-										"	const vec4 vertices[6] =	vec4[6](vec4(1.0, -1.0, 1.0, 1.0),		"
-										"										vec4(-1.0, 1.0, 1.0, 1.0),		"
-										"										vec4(1.0, 1.0, 1.0, 1.0),		"
-										"										vec4(-1.0, 1.0, 1.0, 1.0),		"
-										"										vec4(-1.0, -1.0, 1.0, 1.0),		"
-										"										vec4(1.0, -1.0, 1.0, 1.0));		\n"
-										"																		\n"
-										"	//index into array using gl_VertexID								\n"
-										"	gl_Position = vertices[gl_VertexID];								\n"
+										"    gl_Position = in_position;											\n"
 										"}																		\n";
-
+	
 	/* the fragment shader colours each fragment (pixel-sized area of the triangle) */
 	const char *fragmentShaderSource =	"#version 430 core														\n"
 										"																		\n"
@@ -44,8 +35,9 @@
 										"																		\n"
 										"void main(void)														\n"
 										"{																		\n"
-										"    color = vec4(1.0, 0.0, 1.0, 1.0);									\n"
+										"    color = vec4(0.0, 0.0, 1.0, 1.0);									\n"
 										"}																		\n";
+
 
 	char *readFile(const char *filename)
 	{
@@ -97,8 +89,8 @@ int main(int argc, char **argv)
 	glViewport(0, 0, screenWidth, screenHeight);
 
 	/* build and compile shader program */
-	//const char *vertexShaderSource = readFile("data/shaders2/vertexshader.vert");
-	//const char *fragmentShaderSource = readFile("data/shaders2/fragmentshader.frag");
+	const char *vertexShaderSource = readFile("data/shaders/shader05.vert");
+	const char *fragmentShaderSource = readFile("data/shaders/shader05.frag");
 
 	//vertex shader
 	GLint vertexShader = glCreateShader(GL_VERTEX_SHADER);
@@ -112,7 +104,7 @@ int main(int argc, char **argv)
 	if (!success)
 	{
 		glGetShaderInfoLog(vertexShader, 512, NULL, infoLog);
-		printf("Vertex shader error:\n%s\n", infoLog);
+		//printf("Vertex shader error:\n%s\n", infoLog);
 		
 	}
 
@@ -144,6 +136,39 @@ int main(int argc, char **argv)
 
 	glDeleteShader(vertexShader);
 	glDeleteShader(fragmentShader);
+
+	float iResolutionUniform = glGetUniformLocation(shaderProgram, "iResolution");
+	float iGlobalTimeUniform = glGetUniformLocation(shaderProgram, "iGlobalTime");
+
+	GLfloat vertices[] =
+	{
+		-1.0f, 1.0f,
+		-1.0f, -1.0f,
+		1.0f, -1.0f,
+		-1.0f, 1.0f,
+		1.0f, -1.0f,
+		1.0f, 1.0f
+	};
+
+	GLuint vertexBufferObject;
+	//generate 1 vertex buffer
+	glGenBuffers(1, &vertexBufferObject);
+	//bind the buffer to the GL_ARRAY_BUFFER
+	//buffer calls to the GL_ARRAY_BUFFER targets the currently bound buffer (vbo)
+	glBindBuffer(GL_ARRAY_BUFFER, vertexBufferObject);
+	//copies the vertex data into the buffer that is bound to the GL_ARRAY_BUFFER
+	//GL_STREAM_DRAW - the data will change every time it is drawn
+	glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+	//enable the position attribute - enable the data that was copied to the buffer
+	//to go to through the graphics processing pipeline 
+	glEnableVertexAttribArray(0);
+	//tells opengl how our data buffer is structured - point it to the start of the buffer
+	glVertexAttribPointer(0,	//index of vertex attribute to modify
+		2,						//size of the vertex attribute, number of components. The vertex attribute is a vec2 so it is composed of 2 values.
+		GL_FLOAT,				//data type of each component in the array
+		GL_FALSE,				//normalized = false
+		0,						//stride, space between consecutive vertex attribute sets
+		0);						//offset, where to start read in the buffer
 
 	unsigned long long lastCounter = SDL_GetPerformanceCounter();
 	unsigned int currentTick = SDL_GetTicks();
@@ -193,13 +218,24 @@ int main(int argc, char **argv)
 		}
 		
 		/* render */
-		glClearColor(0.2f, 0.4f, 0.8f, 1.0f);
+		glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT);
 
-		//set shader program
+		//use shader program for rendering
 		glUseProgram(shaderProgram);
+		glUniform1f(iGlobalTimeUniform, float(SDL_GetTicks()));
+		glUniform2f(iResolutionUniform, float(screenWidth), float(screenHeight));
 
+		//set wireframe
+		//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+
+		//update the input attributes
+		//glVertexAttrib4fv(0, position);
+		//glVertexAttrib4fv(1, col);
+
+		glBindVertexArray(vertexBufferObject);
 		glDrawArrays(GL_TRIANGLES, 0, 6);
+		glBindVertexArray(0);
 
 		/* update screen */
 		SDL_GL_SwapWindow(window);
@@ -215,7 +251,7 @@ int main(int argc, char **argv)
 		sprintf_s(message, "%.03fms, %.03fFPS\0", msPerFrame, fps);
 		SDL_SetWindowTitle(window, message);
 	}
-
+	
 	glDeleteProgram(shaderProgram);
 	SDL_GL_DeleteContext(glContext);
 	SDL_DestroyWindow(window);
